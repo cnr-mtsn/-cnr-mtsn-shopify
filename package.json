@@ -1,0 +1,23 @@
+{
+  "name": "@cnr-mtsn/shopify-migrate",
+  "version": "2.0.0",
+  "description": "Shopify extension migration tool — Unified migration for Functions and UI Extensions to 2026-01 API version",
+  "bin": {
+    "migrate-extensions": "./migrate-extensions.js",
+    "upgrade-functions": "./upgrade-functions.js",
+    "upgrade-ui-extensions": "./upgrade-ui-extensions.js"
+  },
+  "scripts": {
+    "migrate": "node migrate-extensions.js",
+    "migrate:dry-run": "node migrate-extensions.js --dry-run"
+  },
+  "keywords": [
+    "shopify",
+    "extensions",
+    "migration",
+    "functions",
+    "checkout",
+    "preact",
+    "polaris"
+  ]
+}
