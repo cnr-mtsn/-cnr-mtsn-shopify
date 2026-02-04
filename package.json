@@ -1,6 +1,6 @@
 {
   "name": "@cnr-mtsn/shopify",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Shopify extension migration tool — Unified migration for Functions and UI Extensions to 2026-01 API version",
   "bin": {
     "shopify-migrate": "migrate-extensions.js"
