@@ -16,6 +16,7 @@
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
+const { execSync } = require("child_process");
 
 // =============================================================================
 // Configuration
@@ -1153,7 +1154,7 @@ async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove, fo
     changes.push({
       file: "node_modules/",
       desc: "removed (clean install required for new dependencies)",
-      apply: () => fs.rmSync(nodeModulesDir, { recursive: true, force: true }),
+      apply: () => execSync(`rm -rf "${nodeModulesDir}"`, { stdio: "ignore" }),
     });
   }
 
@@ -1317,11 +1318,48 @@ async function main() {
       info("Removed top-level package-lock.json");
     }
     if (fs.existsSync(topLevelNodeModules)) {
-      fs.rmSync(topLevelNodeModules, { recursive: true, force: true });
+      execSync(`rm -rf "${topLevelNodeModules}"`, { stdio: "ignore" });
       info("Removed top-level node_modules/");
     }
   } else if (migratedUIExtensions.length > 0 && dryRun) {
     log(`\n  ${colors.yellow}Would remove top-level package-lock.json and node_modules/${colors.reset}`);
+    log(`  ${colors.yellow}Would run 'npm install' in top-level and extension directories${colors.reset}`);
+  }
+
+  // Run npm install if UI extensions were migrated
+  if (migratedUIExtensions.length > 0 && !dryRun) {
+    log(`\n${colors.cyan}╭─────────────────────────────────────────────────────────╮${colors.reset}`);
+    log(`${colors.cyan}│${colors.reset}  ${colors.bright}Installing Dependencies${colors.reset}                                  ${colors.cyan}│${colors.reset}`);
+    log(`${colors.cyan}╰─────────────────────────────────────────────────────────╯${colors.reset}\n`);
+
+    // Top-level npm install (if package.json exists)
+    const appRoot = process.cwd();
+    const topLevelPkgJson = path.join(appRoot, "package.json");
+    if (fs.existsSync(topLevelPkgJson)) {
+      process.stdout.write("  Installing top-level dependencies...");
+      try {
+        execSync("npm install", { cwd: appRoot, stdio: "ignore" });
+        log(` ${colors.green}done${colors.reset}`);
+      } catch (err) {
+        log(` ${colors.red}failed${colors.reset}`);
+        warn(`Top-level npm install failed: ${err.message}`);
+      }
+    }
+
+    // Extension-level npm install
+    for (const ext of migratedUIExtensions) {
+      const extPkgJson = path.join(ext.path, "package.json");
+      if (fs.existsSync(extPkgJson)) {
+        process.stdout.write(`  Installing ${ext.name} dependencies...`);
+        try {
+          execSync("npm install", { cwd: ext.path, stdio: "ignore" });
+          log(` ${colors.green}done${colors.reset}`);
+        } catch (err) {
+          log(` ${colors.red}failed${colors.reset}`);
+          warn(`${ext.name} npm install failed: ${err.message}`);
+        }
+      }
+    }
   }
 
   // Summary
@@ -1360,25 +1398,17 @@ async function main() {
 
     if (migratedUI.length > 0) {
       log(`  ${colors.bright}For UI Extensions:${colors.reset}`);
-      log(`\n  ${colors.yellow}⚠  IMPORTANT: Run 'npm install' FIRST before any other commands!${colors.reset}`);
-      log("     (All node_modules and package-lock.json files were removed for clean install)\n");
-      log("  1. Install dependencies (REQUIRED FIRST STEP):");
-      log("    # Top-level app dependencies:");
-      log("    npm install");
-      log("\n    # Extension dependencies:");
-      migratedUI.forEach(e => {
-        log(`    cd ${path.relative(process.cwd(), e.path)} && npm install`);
-      });
-      log("\n  2. Run dev to generate shopify.d.ts:");
+      log(`  ${colors.green}✓ Dependencies already installed automatically${colors.reset}\n`);
+      log("  1. Run dev to generate shopify.d.ts:");
       log("    shopify app dev");
-      log("\n  3. Review migrated source files for:");
+      log("\n  2. Review migrated source files for:");
       log("    • Component prop changes (onChange → onInput for form fields)");
       log("    • Hook migrations to shopify.* global object");
       log("    • Web component syntax (<s-*> elements)");
       log("");
     }
 
-    log("  4. Build and test each extension:\n");
+    log("  3. Build and test each extension:\n");
     log("    shopify app build\n");
   }
 }
