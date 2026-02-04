@@ -246,7 +246,7 @@ return {
 }
 ```
 
-> **Note:** The migration tool automatically removes `node_modules/` and `package-lock.json`, then runs `npm install` to ensure a clean dependency installation with the new Preact packages.
+> **Note:** The migration tool automatically runs `npm install && npm prune` to install new Preact packages and remove old React packages that are no longer needed.
 
 #### Extension Registration
 
@@ -369,7 +369,7 @@ shopify app function typegen
 
 ### For UI Extensions
 
-> **Note:** The migration tool automatically removes `node_modules/` and `package-lock.json` from both the top-level app directory and each extension directory, then runs `npm install` to install the new Preact dependencies.
+> **Note:** The migration tool automatically runs `npm install && npm prune` to install the new Preact dependencies and remove old React packages.
 
 ```bash
 # 1. Run dev to generate shopify.d.ts type definitions

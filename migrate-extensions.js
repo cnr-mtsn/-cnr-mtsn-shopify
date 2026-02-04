@@ -1139,25 +1139,6 @@ async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove, fo
     }
   });
 
-  // 6. Remove package-lock.json and node_modules (clean install needed for new deps)
-  const lockFile = path.join(ext.path, "package-lock.json");
-  if (fs.existsSync(lockFile)) {
-    changes.push({
-      file: "package-lock.json",
-      desc: "removed (clean install required for new dependencies)",
-      apply: () => fs.unlinkSync(lockFile),
-    });
-  }
-
-  const nodeModulesDir = path.join(ext.path, "node_modules");
-  if (fs.existsSync(nodeModulesDir)) {
-    changes.push({
-      file: "node_modules/",
-      desc: "removed (clean install required for new dependencies)",
-      apply: () => execSync(`rm -rf "${nodeModulesDir}"`, { stdio: "ignore" }),
-    });
-  }
-
   // Show planned changes
   log("  Planned changes:");
   changes.forEach(c => info(`${c.file}: ${c.desc}`));
@@ -1306,27 +1287,8 @@ async function main() {
     }
   }
 
-  // Clean up top-level package-lock.json and node_modules if any UI extensions were migrated
+  // Run npm install and prune if UI extensions were migrated
   const migratedUIExtensions = migrationLog.extensions.filter(e => e.migrated && e.type === "ui_extension");
-  if (migratedUIExtensions.length > 0 && !dryRun) {
-    const appRoot = process.cwd();
-    const topLevelLockFile = path.join(appRoot, "package-lock.json");
-    const topLevelNodeModules = path.join(appRoot, "node_modules");
-
-    if (fs.existsSync(topLevelLockFile)) {
-      fs.unlinkSync(topLevelLockFile);
-      info("Removed top-level package-lock.json");
-    }
-    if (fs.existsSync(topLevelNodeModules)) {
-      execSync(`rm -rf "${topLevelNodeModules}"`, { stdio: "ignore" });
-      info("Removed top-level node_modules/");
-    }
-  } else if (migratedUIExtensions.length > 0 && dryRun) {
-    log(`\n  ${colors.yellow}Would remove top-level package-lock.json and node_modules/${colors.reset}`);
-    log(`  ${colors.yellow}Would run 'npm install' in top-level and extension directories${colors.reset}`);
-  }
-
-  // Run npm install if UI extensions were migrated
   if (migratedUIExtensions.length > 0 && !dryRun) {
     log(`\n${colors.cyan}╭─────────────────────────────────────────────────────────╮${colors.reset}`);
     log(`${colors.cyan}│${colors.reset}  ${colors.bright}Installing Dependencies${colors.reset}                                  ${colors.cyan}│${colors.reset}`);
@@ -1338,7 +1300,7 @@ async function main() {
     if (fs.existsSync(topLevelPkgJson)) {
       process.stdout.write("  Installing top-level dependencies...");
       try {
-        execSync("npm install", { cwd: appRoot, stdio: "ignore" });
+        execSync("npm install && npm prune", { cwd: appRoot, stdio: "ignore" });
         log(` ${colors.green}done${colors.reset}`);
       } catch (err) {
         log(` ${colors.red}failed${colors.reset}`);
@@ -1346,13 +1308,13 @@ async function main() {
       }
     }
 
-    // Extension-level npm install
+    // Extension-level npm install and prune
     for (const ext of migratedUIExtensions) {
       const extPkgJson = path.join(ext.path, "package.json");
       if (fs.existsSync(extPkgJson)) {
         process.stdout.write(`  Installing ${ext.name} dependencies...`);
         try {
-          execSync("npm install", { cwd: ext.path, stdio: "ignore" });
+          execSync("npm install && npm prune", { cwd: ext.path, stdio: "ignore" });
           log(` ${colors.green}done${colors.reset}`);
         } catch (err) {
           log(` ${colors.red}failed${colors.reset}`);
@@ -1360,6 +1322,8 @@ async function main() {
         }
       }
     }
+  } else if (migratedUIExtensions.length > 0 && dryRun) {
+    log(`\n  ${colors.yellow}Would run 'npm install && npm prune' in top-level and extension directories${colors.reset}`);
   }
 
   // Summary
