@@ -246,6 +246,8 @@ return {
 }
 ```
 
+> **Note:** The migration tool removes `node_modules/` and `package-lock.json` from both the top-level app directory and each extension directory to ensure a clean dependency installation with the new Preact packages. Run `npm install` at both levels after migration.
+
 #### Extension Registration
 
 ```jsx
@@ -367,8 +369,14 @@ shopify app function typegen
 
 ### For UI Extensions
 
+> **⚠️ IMPORTANT:** The migration tool removes `node_modules/` and `package-lock.json` from both the **top-level app directory** and **each extension directory** to ensure a clean install with the new Preact dependencies. You **MUST** run `npm install` before any other Shopify commands!
+
 ```bash
-# 1. Install updated dependencies
+# 1. Install updated dependencies (REQUIRED FIRST STEP!)
+# Top-level app dependencies:
+npm install
+
+# Extension dependencies:
 cd extensions/my-ui-extension
 npm install
 

@@ -1138,6 +1138,25 @@ async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove, fo
     }
   });
 
+  // 6. Remove package-lock.json and node_modules (clean install needed for new deps)
+  const lockFile = path.join(ext.path, "package-lock.json");
+  if (fs.existsSync(lockFile)) {
+    changes.push({
+      file: "package-lock.json",
+      desc: "removed (clean install required for new dependencies)",
+      apply: () => fs.unlinkSync(lockFile),
+    });
+  }
+
+  const nodeModulesDir = path.join(ext.path, "node_modules");
+  if (fs.existsSync(nodeModulesDir)) {
+    changes.push({
+      file: "node_modules/",
+      desc: "removed (clean install required for new dependencies)",
+      apply: () => fs.rmSync(nodeModulesDir, { recursive: true, force: true }),
+    });
+  }
+
   // Show planned changes
   log("  Planned changes:");
   changes.forEach(c => info(`${c.file}: ${c.desc}`));
@@ -1286,6 +1305,25 @@ async function main() {
     }
   }
 
+  // Clean up top-level package-lock.json and node_modules if any UI extensions were migrated
+  const migratedUIExtensions = migrationLog.extensions.filter(e => e.migrated && e.type === "ui_extension");
+  if (migratedUIExtensions.length > 0 && !dryRun) {
+    const appRoot = process.cwd();
+    const topLevelLockFile = path.join(appRoot, "package-lock.json");
+    const topLevelNodeModules = path.join(appRoot, "node_modules");
+
+    if (fs.existsSync(topLevelLockFile)) {
+      fs.unlinkSync(topLevelLockFile);
+      info("Removed top-level package-lock.json");
+    }
+    if (fs.existsSync(topLevelNodeModules)) {
+      fs.rmSync(topLevelNodeModules, { recursive: true, force: true });
+      info("Removed top-level node_modules/");
+    }
+  } else if (migratedUIExtensions.length > 0 && dryRun) {
+    log(`\n  ${colors.yellow}Would remove top-level package-lock.json and node_modules/${colors.reset}`);
+  }
+
   // Summary
   migrationLog.endTime = new Date().toISOString();
   const migrated = migrationLog.extensions.filter(e => e.migrated);
@@ -1322,7 +1360,12 @@ async function main() {
 
     if (migratedUI.length > 0) {
       log(`  ${colors.bright}For UI Extensions:${colors.reset}`);
-      log("  1. Install updated dependencies:");
+      log(`\n  ${colors.yellow}⚠  IMPORTANT: Run 'npm install' FIRST before any other commands!${colors.reset}`);
+      log("     (All node_modules and package-lock.json files were removed for clean install)\n");
+      log("  1. Install dependencies (REQUIRED FIRST STEP):");
+      log("    # Top-level app dependencies:");
+      log("    npm install");
+      log("\n    # Extension dependencies:");
       migratedUI.forEach(e => {
         log(`    cd ${path.relative(process.cwd(), e.path)} && npm install`);
       });
