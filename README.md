@@ -101,6 +101,7 @@ node migrate-extensions.js [path] [options]
 | `--dry-run` | Preview changes without writing any files |
 | `--auto-approve` | Skip confirmation prompts (use with caution) |
 | `--api-version <version>` | Target API version (default: `2026-01`) |
+| `--force` | Re-migrate source files even if already at target API version |
 
 ### Examples
 
@@ -122,6 +123,10 @@ node migrate-extensions.js ./extensions --dry-run --auto-approve
 
 # Target a different API version
 node migrate-extensions.js --api-version 2025-10
+
+# Re-migrate source files even if TOML shows target version
+# Useful if initial migration missed some files
+node migrate-extensions.js --force
 ```
 
 ---

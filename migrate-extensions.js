@@ -9,6 +9,7 @@
 //   node migrate-extensions.js --dry-run                 # preview changes without writing
 //   node migrate-extensions.js --auto-approve            # skip prompts (dangerous!)
 //   node migrate-extensions.js --api-version 2026-01     # specify API version (default: 2026-01)
+//   node migrate-extensions.js --force                   # re-migrate even if already at target version
 
 "use strict";
 
@@ -209,6 +210,25 @@ function error(msg) { console.log(`${colors.red}  ✗  ${msg}${colors.reset}`); 
 
 function readFile(p) { return fs.readFileSync(p, "utf8"); }
 function writeFile(p, content) { fs.writeFileSync(p, content, "utf8"); }
+
+// Recursively find all files matching a filter in a directory
+function findFilesRecursive(dir, filter) {
+  const results = [];
+  if (!fs.existsSync(dir)) return results;
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      // Skip node_modules and dist directories
+      if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'build') continue;
+      results.push(...findFilesRecursive(fullPath, filter));
+    } else if (filter(entry.name)) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
 
 async function prompt(question) {
   const rl = readline.createInterface({
@@ -836,15 +856,15 @@ function discoverExtensions(baseDir) {
 // Migration Orchestration
 // =============================================================================
 
-async function migrateFunction(ext, targetApiVersion, dryRun, autoApprove) {
+async function migrateFunction(ext, targetApiVersion, dryRun, autoApprove, force = false) {
   const oldTarget = ext.target;
 
   // Check if already using new cart.* target format
   if (oldTarget && oldTarget.startsWith("cart.")) {
     log(`\n  ${ext.name}: Already using new cart.* target format`);
     // Check if just needs API version bump
-    if (ext.apiVersion === targetApiVersion) {
-      log(`  API version already at ${targetApiVersion} — skipping`);
+    if (ext.apiVersion === targetApiVersion && !force) {
+      log(`  API version already at ${targetApiVersion} — skipping (use --force to re-migrate)`);
       return { migrated: false, reason: "Already at target version" };
     }
     // Just bump API version
@@ -1005,12 +1025,12 @@ async function migrateFunction(ext, targetApiVersion, dryRun, autoApprove) {
   };
 }
 
-async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove) {
+async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove, force = false) {
   const targetPkgVersion = apiVersionToPackageVersion(targetApiVersion);
 
   // Check if already at target version
-  if (ext.apiVersion === targetApiVersion) {
-    log(`\n  ${ext.name}: Already at API version ${targetApiVersion} — skipping`);
+  if (ext.apiVersion === targetApiVersion && !force) {
+    log(`\n  ${ext.name}: Already at API version ${targetApiVersion} — skipping (use --force to re-migrate)`);
     return { migrated: false, reason: "Already at target version" };
   }
 
@@ -1047,15 +1067,16 @@ async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove) {
     }
   }
 
-  // 3. Source files (JSX/TSX)
+  // 3. Source files (JSX/TSX) - recursively scan src/ directory
   const srcDir = path.join(ext.path, "src");
   if (fs.existsSync(srcDir)) {
-    const sourceFiles = fs.readdirSync(srcDir).filter(f =>
-      f.endsWith('.jsx') || f.endsWith('.tsx') || (f.endsWith('.js') && !f.endsWith('.test.js'))
+    const sourceFiles = findFilesRecursive(srcDir, (filename) =>
+      filename.endsWith('.jsx') ||
+      filename.endsWith('.tsx') ||
+      (filename.endsWith('.js') && !filename.endsWith('.test.js'))
     );
 
-    for (const file of sourceFiles) {
-      const filePath = path.join(srcDir, file);
+    for (const filePath of sourceFiles) {
       const content = readFile(filePath);
 
       // Check if this file uses React patterns
@@ -1070,8 +1091,11 @@ async function migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove) {
 
         const { content: migratedContent, warnings: fileWarnings } = migrateUISourceFile(content, surface);
 
+        // Get relative path from extension root for display
+        const relativePath = path.relative(ext.path, filePath);
+
         changes.push({
-          file: `src/${file}`,
+          file: relativePath,
           desc: "React → Preact migration (imports, components, hooks)",
           apply: () => writeFile(filePath, migratedContent),
         });
@@ -1163,6 +1187,7 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--dry-run");
   const autoApprove = args.includes("--auto-approve");
+  const force = args.includes("--force");
 
   let targetApiVersion = DEFAULT_API_VERSION;
   const avIdx = args.indexOf("--api-version");
@@ -1183,6 +1208,7 @@ async function main() {
 
   if (dryRun) log(`\n${colors.yellow}  Mode: DRY RUN — no files will be written${colors.reset}\n`);
   if (autoApprove) log(`\n${colors.yellow}  Mode: AUTO-APPROVE — no confirmation prompts${colors.reset}\n`);
+  if (force) log(`\n${colors.yellow}  Mode: FORCE — re-migrating even if already at target version${colors.reset}\n`);
 
   // Discover extensions
   let extensionDirs = [];
@@ -1238,7 +1264,7 @@ async function main() {
   if (functions.length > 0) {
     log(`\n${colors.bright}━━━ Functions ━━━${colors.reset}`);
     for (const ext of functions) {
-      const result = await migrateFunction(ext, targetApiVersion, dryRun, autoApprove);
+      const result = await migrateFunction(ext, targetApiVersion, dryRun, autoApprove, force);
       migrationLog.extensions.push({
         name: ext.name,
         path: ext.path,
@@ -1251,7 +1277,7 @@ async function main() {
   if (uiExtensions.length > 0) {
     log(`\n${colors.bright}━━━ UI Extensions ━━━${colors.reset}`);
     for (const ext of uiExtensions) {
-      const result = await migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove);
+      const result = await migrateUIExtension(ext, targetApiVersion, dryRun, autoApprove, force);
       migrationLog.extensions.push({
         name: ext.name,
         path: ext.path,
