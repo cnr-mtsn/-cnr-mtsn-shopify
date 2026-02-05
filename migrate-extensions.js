@@ -3,6 +3,13 @@
 // Unified Shopify Extensions Migration Tool
 // Migrates both Shopify Functions and UI Extensions to API version 2026-01
 //
+// Features:
+// - Function migrations: purchase.* → cart.* target namespaces
+// - UI Extension migrations: React → Preact with Polaris web components
+// - Component transformations: React components → <s-*> web components
+// - Attribute transformations: status→tone, spacing→gap, onPress→onClick, etc.
+// - Event handler transformations: onChange={(value)=>...} → onChange={(e)=>e.target.value...}
+//
 // Usage:
 //   node migrate-extensions.js                           # scan ./extensions/ interactively
 //   node migrate-extensions.js extensions/my-extension   # single extension
@@ -157,6 +164,368 @@ const COMPONENT_MAP = {
   Menu: "s-menu",
   Page: "s-page",
   ImageGroup: "s-image-group",
+};
+
+// Spacing value transformations (React → Polaris web components)
+const SPACING_MAP = {
+  // Old spacing values → New spacing tokens
+  "extraTight": "small-100",
+  "tight": "small",
+  "base": "base",
+  "loose": "large",
+  "extraLoose": "large-100",
+  // Numbered spacing (if used)
+  "none": "none",
+  "50": "small-500",
+  "100": "small-400",
+  "200": "small-200",
+  "300": "small",
+  "400": "base",
+  "500": "large",
+};
+
+// Component-specific attribute transformations
+// Format: { componentName: { oldProp: newProp | { name: newProp, valueMap: {} } } }
+const ATTRIBUTE_MAP = {
+  // Banner: status → tone
+  Banner: {
+    status: "tone",
+  },
+
+  // Text: appearance → emphasis, size changes
+  Text: {
+    appearance: {
+      name: "emphasis",
+      valueMap: {
+        subdued: "subdued",
+        success: null, // Use tone instead
+        critical: null, // Use tone instead
+        warning: null, // Use tone instead
+        info: null, // Use tone instead
+        decorative: "strong",
+      },
+    },
+    size: {
+      name: "size",
+      valueMap: {
+        extraSmall: "small-200",
+        small: "small",
+        base: "base",
+        medium: "base",
+        large: "large",
+        extraLarge: "large-200",
+      },
+    },
+  },
+
+  // Button changes
+  Button: {
+    onPress: "onClick",
+    kind: "variant",
+    appearance: "variant",
+    plain: null, // Removed, use variant="plain" or similar
+    loading: "loading", // Same
+    disabled: "disabled", // Same
+    accessibilityRole: "accessibilityLabel",
+  },
+
+  // TextField changes
+  TextField: {
+    onChange: {
+      name: "onInput",
+      eventTransform: true, // Indicates value is now e.target.value
+    },
+    onInput: "onInput",
+    multiline: null, // Use TextArea instead
+  },
+
+  // Checkbox changes
+  Checkbox: {
+    onChange: {
+      name: "onChange",
+      eventTransform: true, // e.target.checked
+    },
+  },
+
+  // Select changes
+  Select: {
+    onChange: {
+      name: "onChange",
+      eventTransform: true, // e.target.value
+    },
+  },
+
+  // Image changes
+  Image: {
+    source: "src",
+    loading: "loading",
+    accessibilityDescription: "alt",
+    description: "alt",
+  },
+
+  // Badge changes
+  Badge: {
+    status: "tone",
+  },
+
+  // Link changes
+  Link: {
+    onPress: "onClick",
+    to: "href",
+    external: {
+      name: "target",
+      valueMap: {
+        true: "_blank",
+        false: null,
+      },
+    },
+  },
+
+  // Pressable (now Clickable)
+  Pressable: {
+    onPress: "onClick",
+  },
+
+  // Stack (from BlockStack/InlineStack) - spacing → gap
+  BlockStack: {
+    spacing: {
+      name: "gap",
+      valueMap: SPACING_MAP,
+    },
+    alignment: "alignItems",
+  },
+  InlineStack: {
+    spacing: {
+      name: "gap",
+      valueMap: SPACING_MAP,
+    },
+    alignment: "alignItems",
+    blockAlignment: "alignContent",
+  },
+
+  // View/Box
+  View: {
+    padding: {
+      name: "padding",
+      valueMap: {
+        ...SPACING_MAP,
+        none: "none",
+      },
+    },
+    border: "border",
+    cornerRadius: "borderRadius",
+    background: "background",
+  },
+  Box: {
+    padding: {
+      name: "padding",
+      valueMap: SPACING_MAP,
+    },
+    cornerRadius: "borderRadius",
+  },
+
+  // Grid/Layout changes
+  Grid: {
+    columns: "gridTemplateColumns",
+    rows: "gridTemplateRows",
+    spacing: {
+      name: "gap",
+      valueMap: SPACING_MAP,
+    },
+  },
+  BlockLayout: {
+    spacing: {
+      name: "gap",
+      valueMap: SPACING_MAP,
+    },
+  },
+  InlineLayout: {
+    spacing: {
+      name: "gap",
+      valueMap: SPACING_MAP,
+    },
+  },
+
+  // Modal
+  Modal: {
+    onClose: "onClose",
+    open: null, // Controlled via hidden prop now
+  },
+
+  // Popover
+  Popover: {
+    onClose: "onClose",
+    open: null,
+  },
+
+  // Form field common props
+  PhoneField: {
+    onChange: {
+      name: "onInput",
+      eventTransform: true,
+    },
+  },
+  DateField: {
+    onChange: {
+      name: "onChange",
+      eventTransform: true,
+    },
+  },
+
+  // Spinner
+  Spinner: {
+    size: {
+      name: "size",
+      valueMap: {
+        small: "small",
+        base: "base",
+        large: "large",
+      },
+    },
+  },
+
+  // Progress
+  Progress: {
+    // No major changes
+  },
+
+  // Icon
+  Icon: {
+    source: "name",
+    size: "size",
+    appearance: {
+      name: "tone",
+      valueMap: {
+        accent: "info",
+        interactive: null,
+        subdued: "subdued",
+        info: "info",
+        success: "success",
+        warning: "warning",
+        critical: "critical",
+        monochrome: null,
+      },
+    },
+  },
+
+  // Heading
+  Heading: {
+    level: "level",
+    // id stays the same
+  },
+
+  // Tag → Chip
+  Tag: {
+    icon: "icon",
+  },
+
+  // ToggleButton → PressButton
+  ToggleButton: {
+    onPress: "onClick",
+    pressed: "pressed",
+  },
+
+  // Switch
+  Switch: {
+    onChange: {
+      name: "onChange",
+      eventTransform: true,
+    },
+  },
+
+  // ChoiceList / Choice
+  ChoiceList: {
+    onChange: {
+      name: "onChange",
+      eventTransform: true,
+    },
+  },
+  Choice: {
+    // id stays the same
+  },
+
+  // Stepper → NumberField
+  Stepper: {
+    onChange: {
+      name: "onInput",
+      eventTransform: true,
+    },
+  },
+
+  // ScrollView → ScrollBox
+  ScrollView: {
+    direction: "direction",
+  },
+
+  // Disclosure → Details
+  Disclosure: {
+    open: "open",
+    onToggle: "onToggle",
+  },
+
+  // Tooltip
+  Tooltip: {
+    // content stays the same
+  },
+
+  // Divider
+  Divider: {
+    direction: "direction",
+  },
+
+  // List
+  List: {
+    spacing: {
+      name: "gap",
+      valueMap: SPACING_MAP,
+    },
+  },
+
+  // Map
+  Map: {
+    // apiKey, latitude, longitude stay the same
+  },
+
+  // QRCode
+  QRCode: {
+    // content stays the same
+  },
+
+  // DropZone
+  DropZone: {
+    onChange: "onChange",
+  },
+
+  // Form
+  Form: {
+    onSubmit: "onSubmit",
+  },
+
+  // ConsentCheckbox
+  ConsentCheckbox: {
+    onChange: {
+      name: "onChange",
+      eventTransform: true,
+    },
+  },
+
+  // ConsentPhoneField
+  ConsentPhoneField: {
+    onChange: {
+      name: "onInput",
+      eventTransform: true,
+    },
+  },
+};
+
+// Alignment value transformations
+const ALIGNMENT_MAP = {
+  start: "start",
+  center: "center",
+  end: "end",
+  baseline: "start", // Approximate
+  leading: "start",
+  trailing: "end",
 };
 
 // React hooks → shopify.* API mapping
@@ -719,6 +1088,10 @@ function migrateUISourceFile(content, extensionType) {
     out = out.replace(closeTagRegex, `</${webComp}>`);
   }
 
+  // Transform event handlers that receive value directly to use e.target.value/e.target.checked
+  // This handles cases like: onInput={(e) => setValue(value)} that should be onInput={(e) => setValue(e.target.value)}
+  out = transformEventHandlerBodies(out, warnings);
+
   // Transform hook usage to shopify.* API
   // useCartLines() → shopify.lines.value
   out = out.replace(/const\s+(\w+)\s*=\s*useCartLines\(\s*\)/g, 'const $1 = shopify.lines.value');
@@ -757,32 +1130,196 @@ function migrateUISourceFile(content, extensionType) {
   return { content: out, warnings };
 }
 
+// Transform event handler bodies to use e.target.value / e.target.checked
+// Handles patterns like: onChange={(value) => setValue(value)} → onChange={(e) => setValue(e.target.value)}
+function transformEventHandlerBodies(content, warnings) {
+  let out = content;
+  let hasTransformed = false;
+
+  // Components that use e.target.value (text-based inputs)
+  const valueComponents = [
+    's-text-field', 's-phone-field', 's-number-field', 's-select',
+    's-text-area', 's-email-field', 's-date-field', 's-password-field',
+    's-money-field', 's-url-field', 's-search-field'
+  ];
+
+  // Components that use e.target.checked (boolean inputs)
+  const checkedComponents = ['s-checkbox', 's-switch'];
+
+  // Common parameter names that might be used for the value
+  const valueParamNames = ['value', 'v', 'val', 'newValue', 'inputValue', 'text', 'input'];
+  const checkedParamNames = ['checked', 'isChecked', 'value', 'v', 'selected', 'active'];
+
+  // Find and transform handlers on value-based components
+  for (const comp of valueComponents) {
+    // Match the component and its onChange/onInput handler
+    // Pattern: <s-text-field ... onInput={(param) => body} or onChange={(param) => body}
+    const handlerRegex = new RegExp(
+      `(<${comp}[^>]*)(on(?:Input|Change)\\s*=\\s*\\{)(\\s*(?:async\\s*)?\\(\\s*)(\\w+)(\\s*\\)\\s*=>\\s*)([^}]+)(\\})`,
+      'g'
+    );
+
+    out = out.replace(handlerRegex, (match, before, eventProp, arrowStart, param, arrowEnd, body, closeBrace) => {
+      // Check if this param is one of the known value param names
+      if (valueParamNames.includes(param) || /^[a-z]$/.test(param)) {
+        hasTransformed = true;
+        // Replace param with 'e' and replace uses of param in body with e.target.value
+        const newBody = body.replace(new RegExp(`\\b${param}\\b`, 'g'), 'e.target.value');
+        return `${before}${eventProp}${arrowStart}e${arrowEnd}${newBody}${closeBrace}`;
+      }
+      return match;
+    });
+  }
+
+  // Find and transform handlers on checked-based components
+  for (const comp of checkedComponents) {
+    const handlerRegex = new RegExp(
+      `(<${comp}[^>]*)(onChange\\s*=\\s*\\{)(\\s*(?:async\\s*)?\\(\\s*)(\\w+)(\\s*\\)\\s*=>\\s*)([^}]+)(\\})`,
+      'g'
+    );
+
+    out = out.replace(handlerRegex, (match, before, eventProp, arrowStart, param, arrowEnd, body, closeBrace) => {
+      if (checkedParamNames.includes(param) || /^[a-z]$/.test(param)) {
+        hasTransformed = true;
+        const newBody = body.replace(new RegExp(`\\b${param}\\b`, 'g'), 'e.target.checked');
+        return `${before}${eventProp}${arrowStart}e${arrowEnd}${newBody}${closeBrace}`;
+      }
+      return match;
+    });
+  }
+
+  // Also handle inline arrow functions assigned to variables that are then used as handlers
+  // This is more complex but covers patterns like:
+  // const handleChange = (value) => setValue(value);
+  // ... onChange={handleChange}
+  // We can't fully transform these, but we can add a warning
+
+  // Look for function declarations that match the old pattern
+  const funcPatterns = [
+    /const\s+(\w+)\s*=\s*(?:async\s*)?\(\s*(value|v|checked|isChecked)\s*\)\s*=>/g,
+    /function\s+(\w+)\s*\(\s*(value|v|checked|isChecked)\s*\)/g,
+  ];
+
+  for (const pattern of funcPatterns) {
+    if (pattern.test(out)) {
+      warnings.push("Some event handler functions may need manual updating to use (e) => e.target.value or e.target.checked");
+      break;
+    }
+  }
+
+  if (hasTransformed) {
+    warnings.push("Event handlers transformed to use e.target.value/e.target.checked - verify correctness");
+  }
+
+  return out;
+}
+
 function transformAttributes(attrs, componentName) {
   if (!attrs || !attrs.trim()) return '';
 
   let result = attrs;
+  const componentMap = ATTRIBUTE_MAP[componentName] || {};
 
-  // Transform onChange to onInput for text fields (value is passed via event)
-  if (['TextField', 'Checkbox', 'Select'].includes(componentName)) {
-    result = result.replace(/onChange\s*=\s*\{([^}]+)\}/g, (match, handler) => {
-      // Check if the handler expects a value directly
-      if (handler.includes('(value)') || handler.includes('(v)') || handler.includes('async (value)')) {
-        return `onInput={${handler.replace(/\(value\)/g, '(e)').replace(/\(v\)/g, '(e)').replace('async (value)', 'async (e)')}}`;
-      }
-      return `onInput={${handler}}`;
-    });
+  // Apply component-specific attribute transformations
+  for (const [oldProp, transform] of Object.entries(componentMap)) {
+    if (transform === null) {
+      // Remove this prop (it's deprecated/removed)
+      result = result.replace(new RegExp(`\\s*${oldProp}\\s*=\\s*(?:"[^"]*"|'[^']*'|\\{[^}]*\\})`, 'g'), '');
+      continue;
+    }
+
+    const newProp = typeof transform === 'string' ? transform : transform.name;
+    const valueMap = typeof transform === 'object' ? transform.valueMap : null;
+    const eventTransform = typeof transform === 'object' ? transform.eventTransform : false;
+
+    if (eventTransform) {
+      // For event transforms, just rename the prop
+      // The actual handler body transformation is done by transformEventHandlerBodies()
+      result = result.replace(new RegExp(`${oldProp}\\s*=`, 'g'), `${newProp}=`);
+    } else if (valueMap) {
+      // Transform prop with value mapping
+      // Handle string values: prop="value"
+      const stringValRegex = new RegExp(`${oldProp}\\s*=\\s*["']([^"']+)["']`, 'g');
+      result = result.replace(stringValRegex, (match, value) => {
+        const newValue = valueMap[value] || value;
+        if (newValue === null) return ''; // Remove if mapped to null
+        return `${newProp}="${newValue}"`;
+      });
+
+      // Handle expression values: prop={value} or prop={"value"}
+      const exprValRegex = new RegExp(`${oldProp}\\s*=\\s*\\{["']([^"']+)["']\\}`, 'g');
+      result = result.replace(exprValRegex, (match, value) => {
+        const newValue = valueMap[value] || value;
+        if (newValue === null) return '';
+        return `${newProp}="${newValue}"`;
+      });
+
+      // Handle variable expressions: prop={variable}
+      const varExprRegex = new RegExp(`${oldProp}\\s*=\\s*\\{([^}]+)\\}`, 'g');
+      result = result.replace(varExprRegex, (match, expr) => {
+        // Keep as expression if it's not a simple string literal
+        if (!expr.startsWith('"') && !expr.startsWith("'")) {
+          return `${newProp}={${expr}}`;
+        }
+        return match; // Already handled above
+      });
+    } else {
+      // Simple prop rename: oldProp → newProp
+      result = result.replace(new RegExp(`${oldProp}\\s*=`, 'g'), `${newProp}=`);
+    }
   }
 
-  // Transform onPress to onClick for buttons
+  // Global transformations (apply to all components)
+
+  // Transform onPress to onClick (for any component that might have it)
   result = result.replace(/onPress\s*=/g, 'onClick=');
 
-  // Transform status to tone for Banner
-  if (componentName === 'Banner') {
-    result = result.replace(/status\s*=\s*["'](\w+)["']/g, 'tone="$1"');
-    result = result.replace(/status\s*=\s*\{["'](\w+)["']\}/g, 'tone="$1"');
+  // Transform status to tone (common pattern)
+  result = result.replace(/status\s*=\s*["'](\w+)["']/g, 'tone="$1"');
+  result = result.replace(/status\s*=\s*\{["'](\w+)["']\}/g, 'tone="$1"');
+
+  // Transform spacing to gap (common pattern)
+  result = result.replace(/spacing\s*=\s*["'](\w+)["']/g, (match, value) => {
+    const newValue = SPACING_MAP[value] || value;
+    return `gap="${newValue}"`;
+  });
+  result = result.replace(/spacing\s*=\s*\{["'](\w+)["']\}/g, (match, value) => {
+    const newValue = SPACING_MAP[value] || value;
+    return `gap="${newValue}"`;
+  });
+
+  // Transform padding values
+  result = result.replace(/padding\s*=\s*["'](\w+)["']/g, (match, value) => {
+    const paddingMap = { loose: 'base', tight: 'small', extraTight: 'small-100', extraLoose: 'large' };
+    const newValue = paddingMap[value] || value;
+    return `padding="${newValue}"`;
+  });
+
+  // Transform alignment values
+  result = result.replace(/alignment\s*=\s*["'](\w+)["']/g, (match, value) => {
+    const newValue = ALIGNMENT_MAP[value] || value;
+    return `alignItems="${newValue}"`;
+  });
+  result = result.replace(/blockAlignment\s*=\s*["'](\w+)["']/g, (match, value) => {
+    const newValue = ALIGNMENT_MAP[value] || value;
+    return `alignContent="${newValue}"`;
+  });
+  result = result.replace(/inlineAlignment\s*=\s*["'](\w+)["']/g, (match, value) => {
+    const newValue = ALIGNMENT_MAP[value] || value;
+    return `justifyContent="${newValue}"`;
+  });
+
+  // Transform cornerRadius to borderRadius
+  result = result.replace(/cornerRadius\s*=/g, 'borderRadius=');
+
+  // Transform source to src for images
+  if (componentName === 'Image') {
+    result = result.replace(/source\s*=/g, 'src=');
+    result = result.replace(/accessibilityDescription\s*=/g, 'alt=');
+    result = result.replace(/description\s*=/g, 'alt=');
   }
 
-  // Transform direction for Stack (BlockStack → direction="block", InlineStack → direction="inline")
+  // Direction for Stack components (BlockStack → direction="block", InlineStack → direction="inline")
   if (componentName === 'BlockStack') {
     if (!result.includes('direction=')) {
       result = result.trim() + ' direction="block"';
@@ -793,18 +1330,29 @@ function transformAttributes(attrs, componentName) {
     }
   }
 
-  // Transform spacing to gap
-  result = result.replace(/spacing\s*=/g, 'gap=');
-
-  // Transform padding="loose" to padding="base"
-  result = result.replace(/padding\s*=\s*["']loose["']/g, 'padding="base"');
-
-  // Transform columns for Grid
-  if (componentName === 'Grid') {
-    result = result.replace(/columns\s*=\s*\{([^}]+)\}/g, 'gridTemplateColumns={`$1`}');
+  // Transform to/external for Link
+  if (componentName === 'Link') {
+    result = result.replace(/to\s*=/g, 'href=');
+    result = result.replace(/external\s*=\s*\{?\s*true\s*\}?/g, 'target="_blank"');
+    result = result.replace(/external\s*=\s*\{?\s*false\s*\}?/g, '');
   }
 
-  return result.trim();
+  // Transform columns for Grid
+  if (componentName === 'Grid' || componentName === 'BlockLayout' || componentName === 'InlineLayout') {
+    // Handle array columns: columns={['fill', 'auto']} or columns={[1, 2]}
+    result = result.replace(/columns\s*=\s*\{(\[[^\]]+\])\}/g, 'gridTemplateColumns={$1}');
+    // Handle simple number columns
+    result = result.replace(/columns\s*=\s*\{(\d+)\}/g, 'gridTemplateColumns="repeat($1, 1fr)"');
+  }
+
+  // Transform appearance/kind to variant
+  result = result.replace(/appearance\s*=/g, 'variant=');
+  result = result.replace(/kind\s*=/g, 'variant=');
+
+  // Clean up any double spaces
+  result = result.replace(/\s+/g, ' ').trim();
+
+  return result;
 }
 
 function generateTsConfig() {
@@ -1366,9 +1914,12 @@ async function main() {
       log("  1. Run dev to generate shopify.d.ts:");
       log("    shopify app dev");
       log("\n  2. Review migrated source files for:");
-      log("    • Component prop changes (onChange → onInput for form fields)");
+      log("    • Component names: React → web components (<s-*> elements)");
+      log("    • Prop renames: status→tone, spacing→gap, onPress→onClick");
+      log("    • Event handlers: onChange={(value)=>...} → onChange={(e)=>e.target.value}");
+      log("    • Spacing tokens: tight→small, loose→base, extraLoose→large");
+      log("    • Layout: BlockStack→<s-stack direction=\"block\">");
       log("    • Hook migrations to shopify.* global object");
-      log("    • Web component syntax (<s-*> elements)");
       log("");
     }
 
