@@ -1,0 +1,23 @@
+# Environment Configuration
+NODE_ENV=development
+
+# Shopify App Credentials (from Partner Dashboard)
+# https://partners.shopify.com → Your App → Configuration → API credentials
+SHOPIFY_CLIENT_ID=your_client_id_here
+SHOPIFY_CLIENT_SECRET=your_client_secret_here
+
+# Shopify Shop Domain (optional — used by one-off scripts)
+SHOPIFY_SHOP=your-store.myshopify.com
+
+# Optional: comma-separated access scopes. Only needed for OAuth-style flows;
+# Client Credentials Grant uses the app's configured scopes.
+# SHOPIFY_ACCESS_SCOPES=read_products,write_products
+
+# Server Configuration
+PORT=3000
+
+# Optional: log level (defaults to debug in dev, info in production)
+# LOG_LEVEL=debug
+
+# API Authentication — generate with: openssl rand -base64 32
+API_ACCESS_TOKEN=your_secure_api_token_here

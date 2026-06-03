@@ -1,13 +1,16 @@
 {
   "name": "@cnr-mtsn/shopify",
-  "version": "2.0.6",
-  "description": "Shopify extension migration tool — Unified migration for Functions and UI Extensions to 2026-01 API version",
+  "version": "2.1.0",
+  "description": "Shopify developer CLI suite — extension migration, theme dev setup, and Node/Express app scaffolding",
   "bin": {
-    "shopify-migrate": "migrate-extensions.js"
+    "shopify-migrate": "migrate-extensions.js",
+    "shopify-init": "init-shopify.js",
+    "shopify-create-node-app": "create-node-app.js"
   },
   "scripts": {
     "migrate": "node migrate-extensions.js",
-    "migrate:dry-run": "node migrate-extensions.js --dry-run"
+    "migrate:dry-run": "node migrate-extensions.js --dry-run",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "shopify",
@@ -16,7 +19,11 @@
     "functions",
     "checkout",
     "preact",
-    "polaris"
+    "polaris",
+    "scaffold",
+    "express",
+    "theme",
+    "node"
   ],
   "repository": {
     "type": "git",

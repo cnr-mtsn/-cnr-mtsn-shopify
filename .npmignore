@@ -1,0 +1,12 @@
+# NOTE: the presence of this file makes npm ignore .gitignore for packing, so
+# it must re-list everything .gitignore excludes, plus dev-only artifacts.
+
+# Previously excluded via .gitignore
+.claude
+old-api-version
+latest-api-version
+
+# Dev-only artifacts — keep in git, exclude from the npm tarball
+docs
+test
+.DS_Store

@@ -131,6 +131,40 @@ node migrate-extensions.js --force
 
 ---
 
+## CLI Tools
+
+This package ships three bins. Run any of them with `npx @cnr-mtsn/shopify <command>` or after a global install (`npm i -g @cnr-mtsn/shopify`).
+
+### `shopify-migrate`
+
+Migrate Shopify Functions and UI Extensions to the latest API version (see above).
+
+### `shopify-init`
+
+Set up a Shopify **theme** for local development. Run it from the root of a theme
+folder; it writes a `package.json` `dev` script, `.gitignore`, and `.shopifyignore`,
+then optionally starts `shopify theme dev`.
+
+```bash
+cd my-theme
+npx @cnr-mtsn/shopify shopify-init
+```
+
+### `shopify-create-node-app`
+
+Scaffold a Shopify **Node/Express** app into the current directory — Admin
+GraphQL client (Client Credentials Grant), pino logging, webhook HMAC
+verification, Bearer auth, and a working `/health` route.
+
+```bash
+mkdir my-app && cd my-app
+npx @cnr-mtsn/shopify shopify-create-node-app
+npm install
+npm run dev   # GET /health
+```
+
+---
+
 ## What Gets Migrated
 
 ### Functions
