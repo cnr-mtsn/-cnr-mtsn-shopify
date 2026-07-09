@@ -133,7 +133,7 @@ node migrate-extensions.js --force
 
 ## CLI Tools
 
-This package ships three bins. Run any of them with `npx @cnr-mtsn/shopify <command>` or after a global install (`npm i -g @cnr-mtsn/shopify`).
+This package ships four bins. Run any of them with `npx @cnr-mtsn/shopify <command>` or after a global install (`npm i -g @cnr-mtsn/shopify`).
 
 ### `shopify-migrate`
 
@@ -162,6 +162,26 @@ npx @cnr-mtsn/shopify shopify-create-node-app
 npm install
 npm run dev   # GET /health
 ```
+
+### `shopify-graphql`
+
+Run ad-hoc **Admin GraphQL** queries against any store you can log into, using
+the Shopify CLI's user-scoped auth (`shopify store auth` / `store execute`) —
+no app, client id, or access token needed. Prompts for the store name and
+scopes (leave scopes empty to reuse a cached auth), then runs `./query.graphql`
+or `./mutation.graphql` from the current directory, or opens GraphiQL.
+
+```bash
+cd any-project        # with a query.graphql / mutation.graphql if running files
+shopify-graphql
+#   Store (name, without .myshopify.com): acme-parts
+#   Scopes (comma-separated; leave empty to reuse existing auth): read_products
+#   1) Run ./query.graphql  2) Run ./mutation.graphql  3) Open GraphiQL
+```
+
+Requires the Shopify CLI (`npm i -g @shopify/cli`). The browser auth screen
+opens on first use per store; the token is cached by the CLI and acts as *you*,
+limited by your staff/collaborator permissions.
 
 ---
 

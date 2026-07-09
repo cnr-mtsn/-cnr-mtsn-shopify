@@ -1,11 +1,12 @@
 {
   "name": "@cnr-mtsn/shopify",
-  "version": "2.1.0",
-  "description": "Shopify developer CLI suite — extension migration, theme dev setup, and Node/Express app scaffolding",
+  "version": "2.2.0",
+  "description": "Shopify developer CLI suite — extension migration, theme dev setup, Node/Express app scaffolding, and Admin GraphQL queries",
   "bin": {
     "shopify-migrate": "migrate-extensions.js",
     "shopify-init": "init-shopify.js",
-    "shopify-create-node-app": "create-node-app.js"
+    "shopify-create-node-app": "create-node-app.js",
+    "shopify-graphql": "graphql.js"
   },
   "scripts": {
     "migrate": "node migrate-extensions.js",
@@ -14,6 +15,8 @@
   },
   "keywords": [
     "shopify",
+    "graphql",
+    "admin-api",
     "extensions",
     "migration",
     "functions",
@@ -27,7 +30,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cnr-mtsn/shopify-migrate"
+    "url": "git+https://github.com/cnr-mtsn/shopify-migrate.git"
   },
   "license": "MIT",
   "engines": {
