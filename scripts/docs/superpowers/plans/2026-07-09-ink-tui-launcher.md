@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Package root is `/Users/cnrmtsn/Development/blueswitch/tools/npm-packages/cnr-mtsn-shopify/scripts` (its own git repo). All paths below are relative to it.
+- Package root is `/Users/cnrmtsn/Development/blueswitch/tools/npm-packages/cnr-mtsn-shopify/scripts`. All paths below are relative to it. The git repo root is the parent directory (`cnr-mtsn-shopify`), so git paths are prefixed `scripts/`.
 - **NEVER run `git commit`** (user's CLAUDE.md). Each task ends with a PAUSE step: report status and suggest a single-line commit subject; the user commits.
 - Version: `3.0.0`. Bin name: `shopify-tools` (exactly). Package converts to `"type": "module"`.
 - Behavior of ported logic must be preserved verbatim — existing test assertions must pass unchanged (only import syntax changes).
@@ -113,7 +113,7 @@ Replace the whole file with:
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cnr-mtsn/shopify-migrate.git"
+    "url": "git+https://github.com/cnr-mtsn/-cnr-mtsn-shopify.git"
   },
   "license": "MIT",
   "engines": {

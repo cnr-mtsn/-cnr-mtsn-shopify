@@ -3,8 +3,6 @@
 
 # Previously excluded via .gitignore
 .claude
-old-api-version
-latest-api-version
 
 # Dev-only artifacts — keep in git, exclude from the npm tarball
 docs

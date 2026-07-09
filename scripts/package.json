@@ -3,26 +3,17 @@
   "version": "2.2.0",
   "description": "Shopify developer CLI suite — extension migration, theme dev setup, Node/Express app scaffolding, and Admin GraphQL queries",
   "bin": {
-    "shopify-migrate": "migrate-extensions.js",
     "shopify-init": "init-shopify.js",
     "shopify-create-node-app": "create-node-app.js",
     "shopify-graphql": "graphql.js"
   },
   "scripts": {
-    "migrate": "node migrate-extensions.js",
-    "migrate:dry-run": "node migrate-extensions.js --dry-run",
     "test": "node --test test/*.test.js"
   },
   "keywords": [
     "shopify",
     "graphql",
     "admin-api",
-    "extensions",
-    "migration",
-    "functions",
-    "checkout",
-    "preact",
-    "polaris",
     "scaffold",
     "express",
     "theme",
