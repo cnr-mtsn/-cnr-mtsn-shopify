@@ -1,9 +1,9 @@
-const test = require("node:test");
-const assert = require("node:assert");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const { sanitizeAppName, destRelPath, scaffoldNodeApp } = require("../create-node-app.js");
+import test from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { sanitizeAppName, destRelPath, scaffoldNodeApp } from "../src/lib/create-node-app.js";
 
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "cnr-scaffold-test-"));
