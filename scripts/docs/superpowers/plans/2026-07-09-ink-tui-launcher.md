@@ -6,7 +6,7 @@
 
 **Architecture:** Pure logic lives in `src/lib/*.js` (ESM, tested by `node --test`); Ink screens in `src/*.jsx` collect input and resolve *handoff descriptors*; the entry `src/cli.jsx` renders the app, waits for Ink to exit, then spawns handoff children with `stdio: "inherit"`. esbuild bundles `src/cli.jsx` → `dist/cli.js` (deps external).
 
-**Tech Stack:** Node ≥18 (dev machine: v22), Ink, React, ink-text-input, ink-select-input, esbuild, `node --test`.
+**Tech Stack:** Node ≥22 (ink 7 floor; dev machine: v22), Ink, React, ink-text-input, ink-select-input, esbuild, `node --test`.
 
 **Spec:** `docs/superpowers/specs/2026-07-09-ink-tui-launcher-design.md`
 
@@ -926,7 +926,7 @@ npm i -g @cnr-mtsn/shopify
 npx @cnr-mtsn/shopify
 ```
 
-Requires Node 18+. The `graphql` tool additionally requires the Shopify CLI
+Requires Node 22+. The `graphql` tool additionally requires the Shopify CLI
 (`npm i -g @shopify/cli`).
 
 ## Usage
